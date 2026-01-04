@@ -1,0 +1,1432 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wrong Piano Keyboard Socks — Sock Octave Instrument</title>
+  <style>
+    :root{
+      --bg:#0b0e14;
+      --panel:#121826;
+      --panel2:#0f1420;
+      --text:#e9edf6;
+      --muted:#aab3c5;
+      --accent:#5cc8ff; /* sky blue anchor */
+      --shadow: 0 14px 40px rgba(0,0,0,.45);
+      --radius: 16px;
+
+      --white-count: 9; /* set by JS */
+      --white-gap: 2px;
+      --white-h: 240px;
+      --black-h: 150px;
+      --black-w-factor: 0.62; /* relative to white key width */
+    }
+
+    *{ box-sizing: border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 20% 0%, #12203a 0%, var(--bg) 55%) fixed;
+      color: var(--text);
+      min-height: 100vh;
+      display:flex;
+      justify-content:center;
+    }
+
+    .wrap{
+      width: min(1100px, 96vw);
+      padding: 18px 14px 28px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+      padding: 16px 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .title{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .title h1{
+      margin:0;
+      font-size: 18px;
+      letter-spacing: .2px;
+      font-weight: 760;
+    }
+    .title p{
+      margin:0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+      max-width: 66ch;
+    }
+
+    .status-pill{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.12);
+      color: var(--muted);
+      font-size: 12px;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .dot{
+      width:10px;height:10px;border-radius:50%;
+      background: #ff5a5a;
+      box-shadow: 0 0 0 4px rgba(255,90,90,.18);
+    }
+    .dot.on{
+      background:#58ff9a;
+      box-shadow: 0 0 0 4px rgba(88,255,154,.16);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+    }
+    @media (max-width: 900px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+
+    .controls{
+      padding: 14px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px 10px;
+      align-items:end;
+    }
+    @media (max-width: 650px){
+      .controls{ grid-template-columns: 1fr; }
+    }
+
+    .control{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    label{
+      font-size: 12px;
+      color: var(--muted);
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+    }
+    label span.value{
+      color: var(--text);
+      opacity:.85;
+      font-variant-numeric: tabular-nums;
+    }
+    select, input[type="range"], button{
+      width:100%;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.26);
+      color: var(--text);
+      padding: 10px 10px;
+      outline:none;
+    }
+    select{ padding: 10px 10px; }
+    input[type="range"]{ padding: 10px 10px; }
+
+    .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+
+    .btn{
+      cursor:pointer;
+      user-select:none;
+      font-weight:650;
+      letter-spacing:.15px;
+      transition: transform .06s ease;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn.secondary{
+      background: rgba(0,0,0,.18);
+    }
+    .btn.accent{
+      background: linear-gradient(180deg, rgba(92,200,255,.20), rgba(92,200,255,.08));
+      border-color: rgba(92,200,255,.35);
+    }
+
+    .kbd-hint{
+      padding: 0 14px 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height:1.4;
+    }
+    .kbd-hint code{
+      color: #cfe9ff;
+      background: rgba(92,200,255,.12);
+      border: 1px solid rgba(92,200,255,.22);
+      border-radius: 8px;
+      padding: 1px 6px;
+    }
+
+    /* Keyboard */
+    .kb-wrap{
+      padding: 14px;
+    }
+    .keyboard{
+      position:relative;
+      width:100%;
+      border-radius: 18px;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.22);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.25);
+      touch-action: none; /* allow pointer tracking cleanly */
+    }
+
+    /* White key row: only whites participate in normal layout */
+    .white-row{
+      display:flex;
+      width:100%;
+      height: var(--white-h);
+      gap: var(--white-gap);
+      padding: 8px;
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0));
+    }
+
+    .white-key{
+      flex: 1 1 0;
+      position:relative;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,.25);
+      box-shadow:
+        0 10px 18px rgba(0,0,0,.25),
+        inset 0 -10px 18px rgba(0,0,0,.15),
+        inset 0 1px 0 rgba(255,255,255,.22);
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      padding: 10px 6px;
+      transition: filter .06s ease, transform .06s ease;
+    }
+    .white-key:active{ transform: translateY(1px); }
+    .white-key.active{
+      filter: brightness(1.08) saturate(1.05);
+      box-shadow:
+        0 14px 24px rgba(0,0,0,.35),
+        inset 0 -10px 18px rgba(0,0,0,.10),
+        inset 0 0 0 3px rgba(255,255,255,.20);
+    }
+
+    .key-label{
+      font-size: 12px;
+      font-weight: 780;
+      letter-spacing: .2px;
+      color: rgba(0,0,0,.75);
+      text-shadow: 0 1px 0 rgba(255,255,255,.35);
+      background: rgba(255,255,255,.45);
+      border: 1px solid rgba(0,0,0,.18);
+      border-radius: 999px;
+      padding: 2px 8px;
+      display:none;
+    }
+    .show-labels .key-label{ display:inline-block; }
+
+    /* Black keys: overlay layer */
+    .black-layer{
+      position:absolute;
+      left:0; top:0;
+      width:100%;
+      height: var(--white-h);
+      pointer-events:none; /* black keys enable their own pointer events */
+    }
+
+    .black-key{
+      position:absolute;
+      top: 8px;
+      height: var(--black-h);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #1b1b1b 0%, #060606 100%);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow:
+        0 12px 18px rgba(0,0,0,.55),
+        inset 0 2px 0 rgba(255,255,255,.08);
+      cursor:pointer;
+      user-select:none;
+      pointer-events:auto; /* re-enable interactions */
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      padding: 10px 6px;
+      transition: transform .06s ease, filter .06s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .black-key:active{ transform: translateY(1px); }
+    .black-key.active{
+      filter: brightness(1.12);
+      box-shadow:
+        0 14px 22px rgba(0,0,0,.70),
+        inset 0 0 0 3px rgba(92,200,255,.18);
+    }
+    .black-key .key-label{
+      color: rgba(255,255,255,.90);
+      background: rgba(0,0,0,.55);
+      border-color: rgba(255,255,255,.12);
+      text-shadow:none;
+    }
+
+    /* Help panel */
+    .help{
+      padding: 14px 14px 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.015));
+    }
+    .help h2{
+      margin:0 0 6px 0;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing:.2px;
+    }
+    .help p{
+      margin: 0 0 10px 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+    .help .mono{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height:1.45;
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 12px;
+      padding: 10px 10px;
+      color: #cfe9ff;
+      white-space: pre-wrap;
+    }
+    .help .small{
+      margin-top:10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .help a{ color: #cfe9ff; }
+
+    footer{
+      color: rgba(255,255,255,.55);
+      font-size: 12px;
+      text-align:center;
+      padding: 2px 4px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <h1>🧦🎹 Wrong Piano Keyboard Socks — Sock Octave Instrument</h1>
+        <p>
+          A whimsical 16-key “sock octave” where the black/white pattern is wrong but the vibe is right.
+          Tap/click keys to play; try different tuning modes for equal-step socks, piano-ish socks, detuned wool socks, and just-ish harmonic socks.
+        </p>
+      </div>
+      <div class="status-pill" id="audioStatus" title="WebAudio unlocks after a user gesture.">
+        <div class="dot" id="audioDot"></div>
+        <div id="audioText">Audio: locked</div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div class="controls">
+          <div class="control">
+            <label>
+              <span>Mapping mode</span>
+              <span class="value" id="modeLabel">16-EDO</span>
+            </label>
+            <select id="mode">
+              <option value="edo16">1) 16-EDO (Sock Equal Division)</option>
+              <option value="piano12">2) 12-EDO “Nearest Piano-ish”</option>
+              <option value="microDup">3) Near-Duplicate Microtonal (Woolly)</option>
+              <option value="justish">4) Harmonic / Just-ish</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <label>
+              <span>Octave shift</span>
+              <span class="value" id="octLabel">0</span>
+            </label>
+            <div class="row">
+              <button class="btn secondary" id="octDown" type="button">−</button>
+              <button class="btn secondary" id="octUp" type="button">+</button>
+            </div>
+          </div>
+
+          <div class="control">
+            <label>
+              <span>Volume</span>
+              <span class="value" id="volLabel">0.75</span>
+            </label>
+            <input id="volume" type="range" min="0" max="1" step="0.01" value="0.75" />
+          </div>
+
+          <div class="control">
+            <label>
+              <span>Brightness / tone</span>
+              <span class="value" id="brightLabel">0.65</span>
+            </label>
+            <input id="brightness" type="range" min="0" max="1" step="0.01" value="0.65" />
+          </div>
+
+          <div class="control">
+            <label>
+              <span>Reverb</span>
+              <span class="value" id="revLabel">0.22</span>
+            </label>
+            <input id="reverb" type="range" min="0" max="1" step="0.01" value="0.22" />
+          </div>
+
+          <div class="control">
+            <label>
+              <span>Labels</span>
+              <span class="value" id="labLabel">off</span>
+            </label>
+            <button class="btn accent" id="toggleLabels" type="button">Toggle labels</button>
+          </div>
+
+          <div class="control" style="grid-column:1/-1;">
+            <button class="btn secondary" id="unlockAudio" type="button">🔊 Unlock audio (if needed)</button>
+          </div>
+        </div>
+
+        <div class="kbd-hint">
+          Optional computer keyboard mapping (left→right):<br/>
+          <code>A S D F G H J K L ; Q W E R T Y U</code>
+          <span style="opacity:.8;"> (works when the page is focused)</span>
+        </div>
+
+        <div class="kb-wrap">
+          <div class="keyboard" id="keyboard" aria-label="Sock octave keyboard">
+            <div class="white-row" id="whiteRow"></div>
+            <div class="black-layer" id="blackLayer"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="help" id="helpPanel">
+          <h2>🧵 Help / mapping notes</h2>
+          <p id="helpText"></p>
+          <div class="mono" id="helpMono"></div>
+          <div class="small">
+            Base pitch is <b>C3</b> (≈130.81 Hz) at octave shift 0. The conceptual 17th key repeats C one octave up (same sky-blue color).
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>Made with WebAudio + procedural sock logic. No libraries. 🧦✨</footer>
+  </div>
+
+<script>
+/**
+ * Wrong Piano Keyboard Socks — Single-file instrument
+ *
+ * Key ideas:
+ * - Parse a W/B pattern string that defines 16 positions (the "sock octave").
+ * - Render only WHITE keys in a flex row (so layout is simple/responsive).
+ * - Render BLACK keys as absolutely-positioned overlays.
+ *   Each black key is centered on the boundary between its nearest white neighbor on the left and right.
+ *
+ * Sound:
+ * - Polyphonic WebAudio synth: triangle + sine + tiny noise tick into a lowpass filter.
+ * - Convolver reverb with generated impulse response.
+ * - 4 mapping modes, each computing a frequency for key index i = 0..15.
+ */
+
+/* -----------------------------
+   1) Pattern + model generation
+-------------------------------- */
+// The 16-key sock octave pattern: exactly one WW gap between positions 7 and 8 (1-indexed).
+const PATTERN_STR = "W B W B W B W W B W B W B W B W";
+const PATTERN = PATTERN_STR.split(/\s+/); // ["W","B",...], length 16
+
+if (PATTERN.length !== 16) {
+  console.warn("Pattern must be 16 tokens; got:", PATTERN.length, PATTERN);
+}
+
+// Build a model of keys (positions 0..15), marking white vs black.
+// We'll also compute a "whiteIndex" for each white position (0..whiteCount-1).
+const keys = [];                // one per pattern position
+const posToWhiteIndex = new Array(16).fill(null);
+let whiteCount = 0;
+
+// First pass: create white keys and count them.
+for (let pos = 0; pos < 16; pos++) {
+  const kind = PATTERN[pos];
+  const isWhite = (kind === "W");
+  const isBlack = (kind === "B");
+  if (!isWhite && !isBlack) throw new Error("Invalid pattern token: " + kind);
+
+  if (isWhite) {
+    posToWhiteIndex[pos] = whiteCount;
+    whiteCount++;
+  }
+
+  keys.push({
+    pos,                 // 0..15 (left-to-right in sock octave)
+    kind,                // "W" or "B"
+    isWhite,
+    isBlack,
+    whiteIndex: posToWhiteIndex[pos] // null for black
+  });
+}
+
+// Expose whiteCount to CSS for easier black-key positioning math.
+document.documentElement.style.setProperty("--white-count", String(whiteCount));
+
+/* -----------------------------
+   2) Rainbow-ish white key colors
+-------------------------------- */
+/**
+ * We want a coherent, playful rainbow across *white keys only*, returning to sky-blue at wrap.
+ * Requirements:
+ * - Each white key is a solid, distinct color.
+ * - First C (pos 1) is sky blue; conceptual octave repeat is same sky blue.
+ * - Not a uniform linear hue wheel: use anchored stops (ROYGBIV-ish) with varied S/L.
+ *
+ * Implementation:
+ * - Define "anchor stops" across t in [0,1] with H/S/L values.
+ * - Map whiteIndex -> t = whiteIndex/(whiteCount-1), piecewise-interpolate H/S/L.
+ */
+const rainbowAnchors = [
+  // t,   hue,  sat,  light
+  { t: 0.00, h: 200, s: 90, l: 68 }, // sky blue (C)
+  { t: 0.12, h: 340, s: 88, l: 64 }, // hot pink-red
+  { t: 0.26, h:  22, s: 95, l: 62 }, // orange
+  { t: 0.40, h:  55, s: 92, l: 60 }, // yellow
+  { t: 0.55, h: 115, s: 78, l: 56 }, // green
+  { t: 0.68, h: 165, s: 78, l: 55 }, // teal
+  { t: 0.80, h: 235, s: 88, l: 64 }, // blue
+  { t: 0.92, h: 282, s: 82, l: 62 }, // violet
+  { t: 1.00, h: 200, s: 90, l: 68 }, // back to sky blue (conceptual octave)
+];
+
+// Interpolate hue along shortest arc.
+function lerpHue(h1, h2, a){
+  let d = ((h2 - h1 + 540) % 360) - 180; // [-180,180)
+  return (h1 + d * a + 360) % 360;
+}
+function lerp(a,b,t){ return a + (b-a)*t; }
+
+function hslToCss(h,s,l){
+  return `hsl(${h.toFixed(1)} ${s.toFixed(1)}% ${l.toFixed(1)}%)`;
+}
+
+function colorForWhiteIndex(wi){
+  const t = (whiteCount <= 1) ? 0 : wi / (whiteCount - 1);
+  // find surrounding anchors
+  let a = rainbowAnchors[0];
+  let b = rainbowAnchors[rainbowAnchors.length - 1];
+  for (let i = 0; i < rainbowAnchors.length - 1; i++) {
+    const A = rainbowAnchors[i], B = rainbowAnchors[i+1];
+    if (t >= A.t && t <= B.t) { a = A; b = B; break; }
+  }
+  const span = (b.t - a.t) || 1e-6;
+  const u = (t - a.t) / span;
+
+  // playful micro-variation in S/L per key (stable): hash from wi
+  const wobble = Math.sin((wi + 1) * 2.17) * 0.5 + Math.cos((wi + 3) * 1.33) * 0.5;
+  const sat = Math.min(98, Math.max(55, lerp(a.s, b.s, u) + wobble * 8));
+  const lit = Math.min(78, Math.max(42, lerp(a.l, b.l, u) + wobble * 6));
+  const hue = lerpHue(a.h, b.h, u);
+
+  return hslToCss(hue, sat, lit);
+}
+
+/* -----------------------------
+   3) DOM rendering (white row + black overlay)
+-------------------------------- */
+const whiteRow = document.getElementById("whiteRow");
+const blackLayer = document.getElementById("blackLayer");
+const keyboardEl = document.getElementById("keyboard");
+
+const keyElements = new Array(16).fill(null); // pos -> element
+let labelsOn = false;
+
+function makeKeyLabel(){
+  const lab = document.createElement("span");
+  lab.className = "key-label";
+  lab.textContent = "";
+  return lab;
+}
+
+/**
+ * Create white keys in a flex row.
+ * Each white key corresponds to a pattern position that is "W", but its pitch index
+ * is still the *pattern position* (pos), not the whiteIndex.
+ */
+function renderWhiteKeys(){
+  whiteRow.innerHTML = "";
+  for (const k of keys) {
+    if (!k.isWhite) continue;
+    const el = document.createElement("div");
+    el.className = "white-key";
+    el.dataset.pos = String(k.pos);
+    el.dataset.kind = "W";
+
+    const bg = colorForWhiteIndex(k.whiteIndex);
+    el.style.background = bg;
+
+    const lab = makeKeyLabel();
+    el.appendChild(lab);
+
+    whiteRow.appendChild(el);
+    keyElements[k.pos] = el;
+  }
+}
+
+/**
+ * Create black keys as overlays.
+ * How we compute placement:
+ * - For a black key at pattern position `pos`, find nearest white on left and right:
+ *     leftWhitePos: scan pos-1 downward until a W
+ *     rightWhitePos: scan pos+1 upward until a W
+ * - Convert those to white indices (0..whiteCount-1), then compute boundary:
+ *     boundaryX = (leftWhiteIndex + 1) / whiteCount  (in fraction of keyboard width)
+ * - Black key width is (whiteWidth * factor) => factor/whiteCount of the full width.
+ */
+function nearestWhitePosLeft(pos){
+  for (let p = pos - 1; p >= 0; p--) if (keys[p].isWhite) return p;
+  return null;
+}
+function nearestWhitePosRight(pos){
+  for (let p = pos + 1; p < 16; p++) if (keys[p].isWhite) return p;
+  return null;
+}
+
+function renderBlackKeys(){
+  blackLayer.innerHTML = "";
+  for (const k of keys) {
+    if (!k.isBlack) continue;
+
+    const leftPos = nearestWhitePosLeft(k.pos);
+    const rightPos = nearestWhitePosRight(k.pos);
+
+    // If pattern were malformed, a black key might not have two neighbors; skip defensively.
+    if (leftPos === null || rightPos === null) continue;
+
+    const leftWi = keys[leftPos].whiteIndex;
+    const rightWi = keys[rightPos].whiteIndex;
+
+    // In a normal keyboard, black keys sit between adjacent whites; here we assume they are adjacent
+    // in the white sequence as well, but we still compute boundary using the left white index.
+    const boundary = (leftWi + 1) / whiteCount; // 0..1
+
+    const el = document.createElement("div");
+    el.className = "black-key";
+    el.dataset.pos = String(k.pos);
+    el.dataset.kind = "B";
+
+    // Width as fraction of the overall keyboard:
+    // blackW = (black-w-factor)/whiteCount
+    const blackW = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--black-w-factor")) || 0.62) / whiteCount;
+
+    // Place black key centered on the boundary.
+    el.style.width = `calc(${blackW * 100}% - 0px)`;
+    el.style.left  = `calc(${(boundary * 100)}% - ${(blackW * 50)}%)`;
+
+    const lab = makeKeyLabel();
+    el.appendChild(lab);
+
+    blackLayer.appendChild(el);
+    keyElements[k.pos] = el;
+  }
+}
+
+renderWhiteKeys();
+renderBlackKeys();
+
+/* -----------------------------
+   4) WebAudio engine (poly synth + reverb)
+-------------------------------- */
+let audioCtx = null;
+
+const audioDot = document.getElementById("audioDot");
+const audioText = document.getElementById("audioText");
+
+function setAudioStatus(on){
+  audioDot.classList.toggle("on", on);
+  audioText.textContent = on ? "Audio: ready" : "Audio: locked";
+}
+
+function ensureAudio(){
+  if (audioCtx) return audioCtx;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  // Master
+  engine.master = audioCtx.createGain();
+  engine.master.gain.value = 0.75;
+
+  // Tone filter
+  engine.tone = audioCtx.createBiquadFilter();
+  engine.tone.type = "lowpass";
+  engine.tone.frequency.value = 4200;
+  engine.tone.Q.value = 0.7;
+
+  // Reverb send/return
+  engine.revIn = audioCtx.createGain();
+  engine.revIn.gain.value = 0.22;
+
+  engine.revOut = audioCtx.createGain();
+  engine.revOut.gain.value = 0.22;
+
+  engine.convolver = audioCtx.createConvolver();
+  engine.convolver.buffer = makeImpulse(audioCtx.sampleRate, 1.8, 2.6);
+
+  // Routing:
+  // dry: voices -> tone -> master
+  // wet: voices -> revIn -> convolver -> revOut -> master
+  engine.tone.connect(engine.master);
+  engine.revIn.connect(engine.convolver);
+  engine.convolver.connect(engine.revOut);
+  engine.revOut.connect(engine.master);
+  engine.master.connect(audioCtx.destination);
+
+  setAudioStatus(true);
+  return audioCtx;
+}
+
+/**
+ * Generate an impulse response for a light, cozy reverb.
+ * lengthSec: duration of IR
+ * decay: exponential-ish decay strength
+ */
+function makeImpulse(sampleRate, lengthSec=1.6, decay=2.2){
+  const length = Math.max(1, Math.floor(sampleRate * lengthSec));
+  const buffer = new AudioBuffer({ length, sampleRate, numberOfChannels: 2 });
+  for (let ch = 0; ch < 2; ch++){
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < length; i++){
+      const t = i / length;
+      const env = Math.pow(1 - t, decay);
+      // colored-ish noise (a bit less hissy)
+      const n = (Math.random()*2 - 1) * 0.9 + (Math.random()*2 - 1) * 0.1;
+      data[i] = n * env * (ch === 0 ? 1 : 0.98);
+    }
+  }
+  return buffer;
+}
+
+const engine = {
+  master: null,
+  tone: null,
+  revIn: null,
+  revOut: null,
+  convolver: null,
+
+  // voice management
+  maxVoices: 10,
+  voices: new Map(),         // pointerKey -> voice
+  voiceOrder: [],            // for stealing
+};
+
+// Convert cents to frequency multiplier
+function centsToRatio(cents){ return Math.pow(2, cents / 1200); }
+
+/* -----------------------------
+   5) Pitch mapping modes
+-------------------------------- */
+/**
+ * Base C is C3 by default.
+ * C3 ≈ 130.8127826502993 Hz (12-TET A4=440 reference).
+ */
+const BASE_C3 = 130.8127826502993;
+let octaveShift = 0;
+
+const modeSel = document.getElementById("mode");
+const modeLabel = document.getElementById("modeLabel");
+
+// Mode 2/3: deterministic mapping from 16 keys -> 12 steps
+function step12FromKeyIndex(i){
+  // Distribute 16 keys across 12 chromatic steps with repeats.
+  // Deterministic method: floor(i * 12 / 16). (Repeats at 0,3,6,9 in this layout.)
+  return Math.floor(i * 12 / 16);
+}
+
+// Mode 3: stable near-duplicate cents offsets per key index
+// Keys sharing the same 12-EDO step get different offsets to create "woolly detuned sock" feel.
+const microOffsetsCents = (() => {
+  // Start with zeros
+  const cents = new Array(16).fill(0);
+
+  // Identify duplicates using the step12 mapping and assign offsets.
+  // For each step with >1 keys, assign a fixed pair of offsets.
+  const stepToKeys = new Map();
+  for (let i = 0; i < 16; i++){
+    const s = step12FromKeyIndex(i);
+    if (!stepToKeys.has(s)) stepToKeys.set(s, []);
+    stepToKeys.get(s).push(i);
+  }
+
+  // Curated offset pairs (in cents). We'll rotate through these for variety.
+  const pairOffsets = [
+    [-30, +18],
+    [-24, +32],
+    [-36, +12],
+    [-20, +26]
+  ];
+
+  let pairIdx = 0;
+  for (const [step, arr] of stepToKeys.entries()){
+    if (arr.length === 1) continue;
+    const [a,b] = arr;
+    const [o1,o2] = pairOffsets[pairIdx % pairOffsets.length];
+    pairIdx++;
+    cents[a] = o1;
+    cents[b] = o2;
+  }
+
+  // Tiny extra "sock wobble" on a couple of non-duplicate notes (still stable).
+  cents[7]  += -10; // around the WW gap area, just for character
+  cents[10] += +8;
+  return cents;
+})();
+
+// Mode 4: 16-note just-ish ratio set within one octave (no 2/1; that’s conceptual key 17)
+const justishRatios = [
+  1/1,
+  25/24,
+  9/8,
+  6/5,
+  5/4,
+  4/3,
+  7/5,
+  45/32,
+  3/2,
+  8/5,
+  5/3,
+  7/4,
+  16/9,
+  9/5,
+  15/8,
+  63/32
+];
+
+// Human-readable pitch names (for 12-EDO-ish modes)
+const PITCH_CLASSES = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
+
+function baseCWithOctShift(){
+  return BASE_C3 * Math.pow(2, octaveShift);
+}
+
+/**
+ * Compute frequency for key index i (0..15) given current mode.
+ * NOTE: i is the pattern position left-to-right, including both white and black keys.
+ */
+function freqForKey(i){
+  const baseC = baseCWithOctShift();
+  const mode = modeSel.value;
+
+  if (mode === "edo16") {
+    // 16 equal divisions of the octave
+    return baseC * Math.pow(2, i / 16);
+  }
+
+  if (mode === "piano12") {
+    // Nearest piano-ish: map 16 keys onto 12 steps with repeats
+    const step = step12FromKeyIndex(i); // 0..11
+    return baseC * Math.pow(2, step / 12);
+  }
+
+  if (mode === "microDup") {
+    // Near-duplicate microtonal: same as piano12, but apply stable cents offsets
+    const step = step12FromKeyIndex(i);
+    const cents = microOffsetsCents[i] || 0;
+    return baseC * Math.pow(2, step / 12) * centsToRatio(cents);
+  }
+
+  if (mode === "justish") {
+    // Just-ish ratios across 16 steps
+    const r = justishRatios[i % 16];
+    return baseC * r;
+  }
+
+  return baseC;
+}
+
+/**
+ * Labels: show index (1..16) and optionally pitch class info depending on mode.
+ */
+function labelForKey(i){
+  const idx = i + 1;
+  const mode = modeSel.value;
+
+  if (mode === "piano12") {
+    const step = step12FromKeyIndex(i);
+    const pc = PITCH_CLASSES[step % 12];
+    // Octave number for display: C3 + octaveShift plus step overflow
+    const baseOct = 3 + octaveShift;
+    const oct = baseOct + Math.floor(step / 12);
+    return `${idx} · ${pc}${oct}`;
+  }
+
+  if (mode === "microDup") {
+    const step = step12FromKeyIndex(i);
+    const pc = PITCH_CLASSES[step % 12];
+    const baseOct = 3 + octaveShift;
+    const oct = baseOct + Math.floor(step / 12);
+    const c = microOffsetsCents[i] || 0;
+    const sign = c >= 0 ? "+" : "";
+    return `${idx} · ${pc}${oct} ${sign}${c}¢`;
+  }
+
+  if (mode === "justish") {
+    const r = justishRatios[i % 16];
+    // show as ratio-ish string when possible
+    const ratioText = ratioPretty(r);
+    return `${idx} · ${ratioText}`;
+  }
+
+  // edo16: show index + cents-ish step
+  if (mode === "edo16") {
+    return `${idx} · ${i}/16`;
+  }
+
+  return String(idx);
+}
+
+// Attempt to pretty-print a ratio as "a/b" when it matches our known set
+function ratioPretty(r){
+  // Our list is exact rationals in JS floats; match by closeness.
+  const known = [
+    ["1/1", 1/1],
+    ["25/24", 25/24],
+    ["9/8", 9/8],
+    ["6/5", 6/5],
+    ["5/4", 5/4],
+    ["4/3", 4/3],
+    ["7/5", 7/5],
+    ["45/32", 45/32],
+    ["3/2", 3/2],
+    ["8/5", 8/5],
+    ["5/3", 5/3],
+    ["7/4", 7/4],
+    ["16/9", 16/9],
+    ["9/5", 9/5],
+    ["15/8", 15/8],
+    ["63/32", 63/32],
+  ];
+  for (const [txt, val] of known){
+    if (Math.abs(r - val) < 1e-9) return txt;
+  }
+  return r.toFixed(5);
+}
+
+/* -----------------------------
+   6) Voice synthesis
+-------------------------------- */
+/**
+ * Create a "toy piano / celesta-ish" percussive voice.
+ * - triangle oscillator for body
+ * - sine oscillator one octave up for sparkle
+ * - tiny noise tick for mallet attack
+ * - lowpass tone control + light random pan
+ *
+ * Returns a voice object with stop() for release.
+ */
+function makeVoice(freq){
+  const ctx = ensureAudio();
+  const now = ctx.currentTime;
+
+  // Nodes
+  const g = ctx.createGain();
+  g.gain.value = 0;
+
+  const pan = ctx.createStereoPanner();
+  // stable-ish pan based on frequency
+  const panVal = (Math.sin(freq * 0.003) * 0.6);
+  pan.pan.value = panVal;
+
+  // Oscillators
+  const osc1 = ctx.createOscillator();
+  osc1.type = "triangle";
+  osc1.frequency.value = freq;
+
+  const osc2 = ctx.createOscillator();
+  osc2.type = "sine";
+  osc2.frequency.value = freq * 2;
+
+  const oscMix1 = ctx.createGain();
+  oscMix1.gain.value = 0.65;
+
+  const oscMix2 = ctx.createGain();
+  oscMix2.gain.value = 0.20;
+
+  // Tiny pitch drift per-note (very small, still musical)
+  const driftCents = (Math.random() * 2 - 1) * 4; // ±4 cents
+  const driftRatio = centsToRatio(driftCents);
+  osc1.frequency.setValueAtTime(freq * driftRatio, now);
+  osc2.frequency.setValueAtTime(freq * 2 * driftRatio, now);
+
+  // Noise tick (mallet)
+  const noise = ctx.createBufferSource();
+  noise.buffer = makeNoiseBuffer(ctx, 0.03);
+  const noiseHP = ctx.createBiquadFilter();
+  noiseHP.type = "highpass";
+  noiseHP.frequency.value = 1200;
+
+  const noiseG = ctx.createGain();
+  noiseG.gain.value = 0;
+
+  // Envelope: fast attack, short decay, gentle sustain, release on keyup
+  const attack = 0.006;
+  const decay = 0.22;
+  const sustain = 0.12; // very small sustain (toy-like)
+  const peak = 0.75;
+
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.exponentialRampToValueAtTime(peak, now + attack);
+  g.gain.exponentialRampToValueAtTime(sustain, now + attack + decay);
+
+  // Noise tick envelope
+  noiseG.gain.setValueAtTime(0.0001, now);
+  noiseG.gain.exponentialRampToValueAtTime(0.22, now + 0.004);
+  noiseG.gain.exponentialRampToValueAtTime(0.0001, now + 0.028);
+
+  // Routing:
+  osc1.connect(oscMix1);
+  osc2.connect(oscMix2);
+  oscMix1.connect(g);
+  oscMix2.connect(g);
+
+  noise.connect(noiseHP);
+  noiseHP.connect(noiseG);
+  noiseG.connect(g);
+
+  g.connect(pan);
+
+  // Dry + wet
+  pan.connect(engine.tone);
+  pan.connect(engine.revIn);
+
+  osc1.start(now);
+  osc2.start(now);
+  noise.start(now);
+
+  // Stop noise quickly
+  noise.stop(now + 0.04);
+
+  // Simple per-voice life-cycle helpers
+  function stop(releaseTime = 0.18){
+    const t = ctx.currentTime;
+    const rt = Math.max(0.02, releaseTime);
+
+    // release curve
+    g.gain.cancelScheduledValues(t);
+    g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + rt);
+
+    // stop oscillators slightly after release
+    const kill = t + rt + 0.03;
+    try { osc1.stop(kill); } catch {}
+    try { osc2.stop(kill); } catch {}
+
+    // cleanup
+    setTimeout(() => {
+      try { osc1.disconnect(); } catch {}
+      try { osc2.disconnect(); } catch {}
+      try { g.disconnect(); } catch {}
+      try { pan.disconnect(); } catch {}
+      try { noise.disconnect(); } catch {}
+      try { noiseHP.disconnect(); } catch {}
+      try { noiseG.disconnect(); } catch {}
+    }, Math.ceil((rt + 0.08) * 1000));
+  }
+
+  return { stop };
+}
+
+function makeNoiseBuffer(ctx, seconds){
+  const len = Math.max(1, Math.floor(ctx.sampleRate * seconds));
+  const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  // Slightly "pink-ish" noise by integrating a bit
+  let last = 0;
+  for (let i = 0; i < len; i++){
+    const white = Math.random() * 2 - 1;
+    last = (last * 0.92) + (white * 0.08);
+    data[i] = last;
+  }
+  return buffer;
+}
+
+/* -----------------------------
+   7) Polyphony + interaction
+-------------------------------- */
+function voiceKey(pos, pointerId){
+  return `${pos}:${pointerId}`;
+}
+
+function stealVoiceIfNeeded(){
+  while (engine.voiceOrder.length > engine.maxVoices){
+    const oldest = engine.voiceOrder.shift();
+    const v = engine.voices.get(oldest);
+    if (v){
+      v.stop(0.08);
+      engine.voices.delete(oldest);
+      // clear visual
+      const pos = parseInt(oldest.split(":")[0], 10);
+      setKeyActive(pos, false);
+    }
+  }
+}
+
+function setKeyActive(pos, active){
+  const el = keyElements[pos];
+  if (!el) return;
+  el.classList.toggle("active", active);
+}
+
+function startNote(pos, pointerId){
+  const ctx = ensureAudio();
+  // If still suspended, resume (some browsers require this on user gesture)
+  if (ctx.state === "suspended") ctx.resume();
+
+  const f = freqForKey(pos);
+
+  const id = voiceKey(pos, pointerId);
+
+  // if already playing this pointer note, ignore
+  if (engine.voices.has(id)) return;
+
+  const v = makeVoice(f);
+  engine.voices.set(id, v);
+  engine.voiceOrder.push(id);
+  stealVoiceIfNeeded();
+  setKeyActive(pos, true);
+}
+
+function stopNote(pos, pointerId){
+  const id = voiceKey(pos, pointerId);
+  const v = engine.voices.get(id);
+  if (!v) return;
+
+  v.stop(0.16);
+  engine.voices.delete(id);
+  // remove from order array
+  const idx = engine.voiceOrder.indexOf(id);
+  if (idx >= 0) engine.voiceOrder.splice(idx, 1);
+  setKeyActive(pos, false);
+}
+
+// Pointer interaction (works for mouse + touch)
+function attachPointerHandlers(){
+  keyboardEl.addEventListener("pointerdown", (e) => {
+    const target = e.target.closest(".white-key, .black-key");
+    if (!target) return;
+
+    const pos = parseInt(target.dataset.pos, 10);
+    const pid = e.pointerId;
+
+    target.setPointerCapture?.(pid);
+    startNote(pos, pid);
+    e.preventDefault();
+  });
+
+  keyboardEl.addEventListener("pointerup", (e) => {
+    const target = e.target.closest(".white-key, .black-key");
+    if (!target) return;
+
+    const pos = parseInt(target.dataset.pos, 10);
+    stopNote(pos, e.pointerId);
+    e.preventDefault();
+  });
+
+  keyboardEl.addEventListener("pointercancel", (e) => {
+    // stop any voices belonging to this pointer
+    const pid = e.pointerId;
+    for (let pos = 0; pos < 16; pos++){
+      stopNote(pos, pid);
+    }
+  });
+
+  keyboardEl.addEventListener("pointerleave", (e) => {
+    // Don't auto-stop on leave; pointer capture typically handles it.
+  });
+}
+attachPointerHandlers();
+
+/* -----------------------------
+   8) Computer keyboard mapping
+-------------------------------- */
+const KEYMAP = "ASDFGHJKL;QWERTYU".split(""); // 16 keys
+const downKeys = new Set();
+
+window.addEventListener("keydown", (e) => {
+  if (e.repeat) return;
+  const k = e.key.toUpperCase();
+  const idx = KEYMAP.indexOf(k);
+  if (idx < 0) return;
+
+  // Avoid capturing typing in select/input contexts
+  const tag = document.activeElement?.tagName?.toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+
+  // Use a synthetic pointerId for keyboard: 999
+  if (!downKeys.has(k)){
+    downKeys.add(k);
+    startNote(idx, 999);
+  }
+  e.preventDefault();
+});
+window.addEventListener("keyup", (e) => {
+  const k = e.key.toUpperCase();
+  const idx = KEYMAP.indexOf(k);
+  if (idx < 0) return;
+  downKeys.delete(k);
+  stopNote(idx, 999);
+  e.preventDefault();
+});
+
+/* -----------------------------
+   9) UI: controls, labels, help text
+-------------------------------- */
+const vol = document.getElementById("volume");
+const bright = document.getElementById("brightness");
+const rev = document.getElementById("reverb");
+
+const volLabel = document.getElementById("volLabel");
+const brightLabel = document.getElementById("brightLabel");
+const revLabel = document.getElementById("revLabel");
+
+const octLabel = document.getElementById("octLabel");
+const octDown = document.getElementById("octDown");
+const octUp = document.getElementById("octUp");
+
+const toggleLabelsBtn = document.getElementById("toggleLabels");
+const labLabel = document.getElementById("labLabel");
+
+const unlockBtn = document.getElementById("unlockAudio");
+
+function updateAudioParams(){
+  if (!audioCtx) return;
+
+  // Volume
+  engine.master.gain.setTargetAtTime(parseFloat(vol.value), audioCtx.currentTime, 0.02);
+
+  // Brightness -> lowpass cutoff range
+  const b = parseFloat(bright.value);
+  const cutoff = 700 + Math.pow(b, 1.7) * 8200; // perceptual-ish curve
+  engine.tone.frequency.setTargetAtTime(cutoff, audioCtx.currentTime, 0.02);
+  engine.tone.Q.setTargetAtTime(0.55 + b * 1.2, audioCtx.currentTime, 0.02);
+
+  // Reverb: wet gain crossfade (revIn + revOut)
+  const r = parseFloat(rev.value);
+  engine.revIn.gain.setTargetAtTime(r, audioCtx.currentTime, 0.02);
+  engine.revOut.gain.setTargetAtTime(r, audioCtx.currentTime, 0.02);
+}
+
+function updateLabelsText(){
+  for (let i = 0; i < 16; i++){
+    const el = keyElements[i];
+    if (!el) continue;
+    const lab = el.querySelector(".key-label");
+    if (!lab) continue;
+    lab.textContent = labelForKey(i);
+  }
+}
+
+function setLabels(on){
+  labelsOn = on;
+  keyboardEl.classList.toggle("show-labels", on);
+  labLabel.textContent = on ? "on" : "off";
+  updateLabelsText();
+}
+
+toggleLabelsBtn.addEventListener("click", () => setLabels(!labelsOn));
+setLabels(false); // default off (more “toy sock vibe”)
+
+vol.addEventListener("input", () => {
+  volLabel.textContent = (+vol.value).toFixed(2);
+  updateAudioParams();
+});
+bright.addEventListener("input", () => {
+  brightLabel.textContent = (+bright.value).toFixed(2);
+  updateAudioParams();
+});
+rev.addEventListener("input", () => {
+  revLabel.textContent = (+rev.value).toFixed(2);
+  updateAudioParams();
+});
+
+octDown.addEventListener("click", () => {
+  octaveShift = Math.max(-3, octaveShift - 1);
+  octLabel.textContent = String(octaveShift);
+  updateLabelsText();
+});
+octUp.addEventListener("click", () => {
+  octaveShift = Math.min(3, octaveShift + 1);
+  octLabel.textContent = String(octaveShift);
+  updateLabelsText();
+});
+
+unlockBtn.addEventListener("click", async () => {
+  const ctx = ensureAudio();
+  if (ctx.state === "suspended") await ctx.resume();
+  updateAudioParams();
+});
+
+modeSel.addEventListener("change", () => {
+  modeLabel.textContent = modeSel.options[modeSel.selectedIndex].textContent.split(") ")[1] || modeSel.value;
+  updateLabelsText();
+  updateHelpPanel();
+});
+
+function updateHelpPanel(){
+  const helpText = document.getElementById("helpText");
+  const helpMono = document.getElementById("helpMono");
+  const mode = modeSel.value;
+
+  if (mode === "edo16"){
+    helpText.textContent =
+      "Mode 1: The sock octave is 16 equal steps of an octave. Every key is one step in 16-EDO, regardless of being black/white visually.";
+    helpMono.textContent =
+`Formula:
+  i = 0..15 (left→right sock keys)
+  f = baseC · 2^(i/16)
+
+Notes:
+  • the 17th conceptual key would be i=16 → baseC·2 (same pitch class as C, one octave up)
+  • visuals are “wrong piano socks”, tuning is perfectly even`;
+    return;
+  }
+
+  if (mode === "piano12"){
+    helpText.textContent =
+      "Mode 2: “Nearest piano-ish.” We deterministically squeeze 16 sock keys onto the 12 chromatic steps by repeating some pitch classes.";
+    const mapping = [];
+    for (let i=0;i<16;i++){
+      const s = step12FromKeyIndex(i);
+      mapping.push({i, s, name: PITCH_CLASSES[s]});
+    }
+    helpMono.textContent =
+`Deterministic mapping:
+  step(i) = floor(i · 12 / 16)
+
+Key → semitone step → pitch class:
+` + mapping.map(m => `  ${String(m.i+1).padStart(2," ")} → ${String(m.s).padStart(2," ")} → ${m.name}`).join("\n");
+    return;
+  }
+
+  if (mode === "microDup"){
+    helpText.textContent =
+      "Mode 3: “Woolly detuned socks.” Same piano-ish mapping as Mode 2, but repeated pitch classes get stable microtonal offsets (cents), creating near-duplicate pairs that always detune the same way.";
+    const lines = [];
+    for (let i=0;i<16;i++){
+      const s = step12FromKeyIndex(i);
+      const pc = PITCH_CLASSES[s];
+      const c = microOffsetsCents[i] || 0;
+      const sign = c>=0?"+":"";
+      lines.push(`  ${String(i+1).padStart(2," ")} → step ${String(s).padStart(2," ")} (${pc}) ${sign}${c}¢`);
+    }
+    helpMono.textContent =
+`Base mapping:
+  step(i) = floor(i · 12 / 16)
+Then apply cents offsets:
+  f = baseC · 2^(step/12) · 2^(cents/1200)
+
+Key → pitch class + cents:
+` + lines.join("\n") +
+`\n\nResult:
+  • some keys feel like “almost the same note” (detuned wool)
+  • offsets are repeatable (not random per press)`;
+    return;
+  }
+
+  if (mode === "justish"){
+    helpText.textContent =
+      "Mode 4: A coherent “just-ish sock scale.” Each of the 16 steps uses a fixed harmonic ratio relative to C, staying within the octave (the conceptual 17th key would be 2/1).";
+    helpMono.textContent =
+`Ratios (relative to C):
+  1:  1/1
+  2:  25/24
+  3:  9/8
+  4:  6/5
+  5:  5/4
+  6:  4/3
+  7:  7/5
+  8:  45/32
+  9:  3/2
+ 10:  8/5
+ 11:  5/3
+ 12:  7/4
+ 13:  16/9
+ 14:  9/5
+ 15:  15/8
+ 16:  63/32
+
+Formula:
+  f = baseC · ratio[i]`;
+    return;
+  }
+}
+
+updateHelpPanel();
+
+// Update numeric labels initial
+volLabel.textContent = (+vol.value).toFixed(2);
+brightLabel.textContent = (+bright.value).toFixed(2);
+revLabel.textContent = (+rev.value).toFixed(2);
+octLabel.textContent = String(octaveShift);
+modeLabel.textContent = modeSel.options[modeSel.selectedIndex].textContent.split(") ")[1] || modeSel.value;
+
+/* -----------------------------
+   10) Audio unlock + “locked” indicator
+-------------------------------- */
+setAudioStatus(false);
+
+function attemptAutoResume(){
+  if (!audioCtx) return;
+  if (audioCtx.state === "suspended"){
+    audioCtx.resume().then(() => {
+      setAudioStatus(true);
+      updateAudioParams();
+    }).catch(() => {});
+  } else {
+    setAudioStatus(true);
+  }
+}
+
+// Any first gesture on the page will try to unlock audio.
+["pointerdown","touchstart","mousedown","keydown"].forEach(ev => {
+  window.addEventListener(ev, () => {
+    const ctx = ensureAudio();
+    if (ctx.state !== "running") attemptAutoResume();
+    updateAudioParams();
+  }, { once:false, passive:true });
+});
+</script>
+</body>
+</html>
